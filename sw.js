@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ClipSync-v9.0.50';
+const CACHE_NAME = 'ClipSync-v1.5.15';
 const urlsToCache = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   self.skipWaiting();
