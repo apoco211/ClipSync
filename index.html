@@ -29,11 +29,11 @@
 <style>
 :root{ --kakao-bg:#ABC1D1; --bubble-other:#ffffff; --bubble-mine:#FEE500; }
 *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color: transparent; }
-html,body{ height:100%; background:#f6f1eb; }
-body{ font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; display:flex; justify-content:center; }
+html{ height:100%; height:100dvh; }
+body{ height:100%; height:100dvh; background:#f6f1eb; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; display:flex; justify-content:center; overflow:hidden; }
 .app{
-  width:100%; max-width:480px; height:100dvh; background:#fff;
-  display:flex; flex-direction:column;
+  width:100%; max-width:480px; height:100dvh; max-height:100dvh;
+  background:#fff; display:flex; flex-direction:column;
   border:3px solid #000; border-radius:22px; overflow:hidden;
 }
 .top-header{ padding:10px 14px 6px; display:flex; align-items:center; justify-content:space-between; background:#fff; flex-shrink:0; border-bottom:1px solid #eee; }
@@ -46,28 +46,37 @@ body{ font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "No
 .tab.on{ background:#000; color:#fff; }
 .tab.off{ background:#fff; color:#000; }
 
-#view-chat{ flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--kakao-bg); }
-#view-set{ flex:1; display:none; flex-direction:column; overflow-y:auto; background:#fff; padding:10px; }
+/* 핵심: 스크롤 되게 min-height 0 + overflow */
+#view-chat{ flex:1 1 0; display:flex; flex-direction:column; overflow:hidden; background:var(--kakao-bg); min-height:0; }
+#view-set{ flex:1 1 0; display:none; flex-direction:column; overflow-y:auto; background:#fff; padding:10px; min-height:0; -webkit-overflow-scrolling:touch; }
 
 #chatList{
-  flex:1; overflow-y:auto; overflow-x:hidden;
-  padding:8px 6px 12px;
-  display:flex; flex-direction:column; gap:6px;
-  -webkit-overflow-scrolling: touch;
+  flex:1 1 0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding:6px 4px 12px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  min-height:0;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
 }
-.date-sep{ text-align:center; font-size:10px; color:#4a5a6a; background:rgba(0,0,0,0.15); padding:3px 9px; border-radius:10px; align-self:center; margin:4px 0; }
+.date-sep{ text-align:center; font-size:10px; color:#4a5a6a; background:rgba(0,0,0,0.15); padding:3px 9px; border-radius:10px; align-self:center; margin:4px 0; flex-shrink:0; }
 
-.kakao-row{ display:flex; gap:6px; max-width:86%; width:fit-content; align-items:flex-start; }
+/* 폭 넓게: 92% */
+.kakao-row{ display:flex; gap:6px; max-width:92%; width:fit-content; max-width:92%; align-items:flex-start; flex-shrink:0; }
 .kakao-row.other{ align-self:flex-start; }
 .kakao-row.mine{ align-self:flex-end; flex-direction:row-reverse; }
-.kakao-profile{ width:34px; height:34px; border-radius:12px; background:#fff; border:1px solid rgba(0,0,0,0.08); display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; }
-.kakao-content{ display:flex; flex-direction:column; gap:2px; min-width:0; max-width:100%; }
+.kakao-profile{ width:32px; height:32px; border-radius:11px; background:#fff; border:1px solid rgba(0,0,0,0.08); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+.kakao-content{ display:flex; flex-direction:column; gap:2px; min-width:0; max-width:100%; flex:1 1 auto; }
 .kakao-author{ font-size:10px; font-weight:700; color:#2c3e50; margin-left:2px; opacity:0.8; }
-.kakao-bubble-line{ display:flex; gap:5px; align-items:flex-end; max-width:100%; }
+.kakao-bubble-line{ display:flex; gap:5px; align-items:flex-end; max-width:100%; width:100%; }
 .kakao-row.mine .kakao-bubble-line{ flex-direction:row-reverse; }
 .kakao-bubble{
   background:var(--bubble-other);
-  padding:7px 10px;
+  padding:8px 11px;
   border-radius:16px;
   font-size:13px;
   line-height:1.38;
@@ -76,19 +85,21 @@ body{ font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "No
   word-break:keep-all;
   overflow-wrap:break-word;
   white-space:pre-wrap;
+  width:100%;
   max-width:100%;
   box-shadow:0 0.5px 0.5px rgba(0,0,0,0.12);
   letter-spacing:-0.1px;
+  flex:1 1 auto;
 }
 .kakao-row.other .kakao-bubble{ border-top-left-radius:4px; }
 .kakao-row.mine .kakao-bubble{ background:var(--bubble-mine); border-top-right-radius:4px; }
-.kakao-bubble.has-image{ padding:0; overflow:hidden; max-width:220px; }
+.kakao-bubble.has-image{ padding:0; overflow:hidden; max-width:260px; width:auto; flex:none; }
 .kakao-bubble.has-image img{ display:block; width:100%; height:auto; max-height:260px; object-fit:cover; }
 .kakao-meta{ display:flex; flex-direction:column; gap:3px; flex-shrink:0; align-items:flex-start; }
 .kakao-row.mine .kakao-meta{ align-items:flex-end; }
 .kakao-time{ font-size:9px; color:#435261; font-weight:400; white-space:nowrap; opacity:0.85; }
 .kakao-actions{ display:flex; gap:3px; }
-.kakao-copy,.kakao-del{ font-size:9.5px; font-weight:700; padding:3px 6px; border-radius:6px; border:none; cursor:pointer; }
+.kakao-copy,.kakao-del{ font-size:9.5px; font-weight:700; padding:4px 7px; border-radius:7px; border:none; cursor:pointer; }
 .kakao-copy{ background:#D6EAF8; color:#1565C0; }
 .kakao-del{ background:rgba(0,0,0,0.05); color:#666; }
 
@@ -123,7 +134,7 @@ body{ font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "No
 <div class="app">
   <div class="top-header">
     <h1>📋 ClipSync</h1>
-    <span class="badge">v1.8.1 - Kakao Match</span>
+    <span class="badge">v1.8.2 - Wide &amp; Scroll Fix</span>
   </div>
   <div class="room-bar" id="topBadge">📱 아이폰 - jeon-clipboard</div>
   <div class="status-bar" id="liveStatus">🟢 실시간 연결됨 - 메시지 0개</div>
