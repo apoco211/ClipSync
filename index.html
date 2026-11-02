@@ -138,7 +138,7 @@ body{ height:100%; height:100dvh; background:#f6f1eb; font-family: -apple-system
 <div class="app">
   <div class="top-header">
     <h1>📋 ClipSync</h1>
-    <span class="badge">v1.8.5 - Photo Compress Fix</span>
+    <span class="badge">v1.8.6 - Photo Download &amp; Clip</span>
   </div>
   <div class="room-bar" id="topBadge">📱 아이폰 - jeon-clipboard</div>
   <div class="status-bar" id="liveStatus">🟢 실시간 연결됨 - 메시지 0개</div>
@@ -320,10 +320,23 @@ function renderChat(force){
     } else {
       bubbleInner = '<div class="kakao-bubble">'+esc+'</div>';
     }
+    const isImage = msg.type==='image' && msg.imageUrl;
     if(isMine){
-      html+='<div class="kakao-row mine"><div class="kakao-content"><div class="kakao-bubble-line"><div class="kakao-meta"><span class="kakao-time">'+timeStr+'</span><div class="kakao-actions"><button class="kakao-copy" onclick="copyMsgContent(\''+safeKey+'\')">복사</button><button class="kakao-del" onclick="deleteMsg(\''+safeKey+'\')">삭제</button></div></div>'+bubbleInner+'</div></div></div>';
+      let actions = '';
+      if(isImage){
+        actions = '<button class="kakao-copy" onclick="downloadImage(\''+safeKey+'\')">저장</button><button class="kakao-copy" style="background:#FFF9C4;color:#F57F17;" onclick="copyImageToClipboard(\''+safeKey+'\')">클립복사</button><button class="kakao-del" onclick="deleteMsg(\''+safeKey+'\')">삭제</button>';
+      } else {
+        actions = '<button class="kakao-copy" onclick="copyMsgContent(\''+safeKey+'\')">복사</button><button class="kakao-del" onclick="deleteMsg(\''+safeKey+'\')">삭제</button>';
+      }
+      html+='<div class="kakao-row mine"><div class="kakao-content"><div class="kakao-bubble-line"><div class="kakao-meta"><span class="kakao-time">'+timeStr+'</span><div class="kakao-actions">'+actions+'</div></div>'+bubbleInner+'</div></div></div>';
     } else {
-      html+='<div class="kakao-row other"><div class="kakao-profile">'+mode.icon+'</div><div class="kakao-content"><div class="kakao-author">'+msg.author+'</div><div class="kakao-bubble-line">'+bubbleInner+'<div class="kakao-meta"><span class="kakao-time">'+timeStr+'</span><div class="kakao-actions"><button class="kakao-copy" onclick="copyMsgContent(\''+safeKey+'\')">복사</button></div></div></div></div></div>';
+      let actions = '';
+      if(isImage){
+        actions = '<button class="kakao-copy" onclick="downloadImage(\''+safeKey+'\')">저장</button><button class="kakao-copy" style="background:#FFF9C4;color:#F57F17;" onclick="copyImageToClipboard(\''+safeKey+'\')">클립복사</button>';
+      } else {
+        actions = '<button class="kakao-copy" onclick="copyMsgContent(\''+safeKey+'\')">복사</button>';
+      }
+      html+='<div class="kakao-row other"><div class="kakao-profile">'+mode.icon+'</div><div class="kakao-content"><div class="kakao-author">'+msg.author+'</div><div class="kakao-bubble-line">'+bubbleInner+'<div class="kakao-meta"><span class="kakao-time">'+timeStr+'</span><div class="kakao-actions">'+actions+'</div></div></div></div></div>';
     }
   });
   el.innerHTML=html;
@@ -439,6 +452,52 @@ async function pasteFromClipboard(){
 
 
 
+
+
+function downloadImage(key){
+  const msg = data.messages.find(m=>m._key===key);
+  if(!msg || !msg.imageUrl){ showToast('이미지 없음'); return; }
+  try{
+    const a=document.createElement('a');
+    a.href=msg.imageUrl;
+    a.download='clipsync-'+Date.now()+'.jpg';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    showToast('저장 시작됨');
+  }catch(e){
+    window.open(msg.imageUrl, '_blank');
+  }
+}
+
+async function copyImageToClipboard(key){
+  const msg = data.messages.find(m=>m._key===key);
+  if(!msg || !msg.imageUrl){ showToast('이미지 없음'); return; }
+  try{
+    // dataUrl to blob
+    let blob;
+    if(msg.imageUrl.startsWith('data:')){
+      const res = await fetch(msg.imageUrl);
+      blob = await res.blob();
+    } else {
+      const res = await fetch(msg.imageUrl, {mode:'cors'});
+      blob = await res.blob();
+    }
+    if(navigator.clipboard && window.ClipboardItem){
+      const item = new ClipboardItem({[blob.type]: blob});
+      await navigator.clipboard.write([item]);
+      showToast('클립보드에 복사됨 - 붙여넣기 가능');
+    } else {
+      // fallback - open image viewer for long-press copy
+      openImageViewer(msg.imageUrl);
+      showToast('길게 눌러서 이미지 복사');
+    }
+  }catch(err){
+    console.error('copy img err', err);
+    showToast('복사 실패, 길게 눌러 저장: '+err.message);
+    openImageViewer(msg.imageUrl);
+  }
+}
 
 function openImageViewer(url){
   document.getElementById('imgModalImg').src=url;
