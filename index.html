@@ -138,7 +138,7 @@ body{ height:100%; height:100dvh; background:#f6f1eb; font-family: -apple-system
 <div class="app">
   <div class="top-header">
     <h1>📋 ClipSync</h1>
-    <span class="badge">v1.8.3 - Icon Embedded Fix</span>
+    <span class="badge">v1.8.4 - Photo Fix</span>
   </div>
   <div class="room-bar" id="topBadge">📱 아이폰 - jeon-clipboard</div>
   <div class="status-bar" id="liveStatus">🟢 실시간 연결됨 - 메시지 0개</div>
@@ -355,30 +355,53 @@ function sendMsg(){
   inp.value='';
 }
 
-async function pasteFromClipboard(){
-  try{
-    const txt = await navigator.clipboard.readText();
-    if(txt){ document.getElementById('chatInput').value=txt; showToast('붙여넣기 됨'); }
-  }catch(e){
-    showToast('클립보드 권한 없음 - 직접 붙여넣기 해줘');
-  }
-}
+
 
 function handlePhotoSelect(e){
   const file=e.target.files[0];
   if(!file) return;
-  if(file.size>5*1024*1024){ showToast('5MB 이하만'); return; }
+  if(file.size>8*1024*1024){ showToast('8MB 이하만'); e.target.value=''; return; }
+  showToast('사진 준비중...');
   const fileName = Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-  const storageRef = firebase.storage().ref('family/'+familyId+'/chat_images/'+fileName);
-  const uploadTask = storageRef.put(file);
-  uploadTask.on('state_changed', null, (err)=>{ showToast('업로드 실패'); }, ()=>{
-    uploadTask.snapshot.ref.getDownloadURL().then(url=>{
-      db.ref('family/'+familyId+'/messages').push({author:cur, content:'', imageUrl:url, created_at:new Date().toISOString(), type:'image'});
-      showToast('사진 전송됨');
-    });
-  });
+  try{
+    const storageRef = firebase.storage().ref('family/'+familyId+'/chat_images/'+fileName);
+    const uploadTask = storageRef.put(file);
+    uploadTask.on('state_changed', 
+      (snap)=>{ const p=Math.round(snap.bytesTransferred/snap.totalBytes*100); if(p%30===0) showToast('업로드 '+p+'%'); },
+      (err)=>{
+        console.error('storage err', err);
+        showToast('Storage 실패, base64로 전환: '+(err.code||''));
+        fallbackBase64(file);
+      },
+      ()=>{
+        uploadTask.snapshot.ref.getDownloadURL().then(url=>{
+          db.ref('family/'+familyId+'/messages').push({author:cur, content:'', imageUrl:url, created_at:new Date().toISOString(), type:'image'});
+          showToast('사진 전송됨');
+        }).catch(err=>{
+          console.error('getURL err', err);
+          fallbackBase64(file);
+        });
+      }
+    );
+  }catch(err){
+    console.error('storage init err', err);
+    fallbackBase64(file);
+  }
   e.target.value='';
 }
+function fallbackBase64(file){
+  if(file.size>1.5*1024*1024){ showToast('1.5MB 넘으면 Storage만 가능 - 규칙 확인 필요'); return; }
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const dataUrl = ev.target.result;
+    db.ref('family/'+familyId+'/messages').push({author:cur, content:'', imageUrl:dataUrl, created_at:new Date().toISOString(), type:'image', isBase64:true});
+    showToast('사진 전송됨 (base64)');
+  };
+  reader.onerror = function(){ showToast('파일 읽기 실패'); };
+  reader.readAsDataURL(file);
+}
+
+
 
 function openImageViewer(url){
   document.getElementById('imgModalImg').src=url;
