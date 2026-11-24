@@ -2,7 +2,7 @@
 <html lang="ko"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ClipSync v1.8.9 - - - Kakao Fix</title>
+<title>ClipSync v1.9.0 - - - Kakao Fix</title>
 <link rel="apple-touch-icon" sizes="180x180" href="https://apoco211.github.io/ClipSync/clipsync-icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ClipSync">
@@ -107,7 +107,7 @@ body{ height:100%; height:100dvh; background:#f6f1eb; font-family: -apple-system
 <div class="app">
   <div class="top-header">
     <h1>📋 ClipSync</h1>
-    <span class="badge">v1.8.9 - Photo Download &amp; Clip</span>
+    <span class="badge">v1.9.0 - Photo Download &amp; Clip</span>
   </div>
   <div class="room-bar" id="topBadge">📱 아이폰 - jeon-clipboard</div>
   <div class="status-bar" id="liveStatus">🟢 실시간 연결됨 - 메시지 0개</div>
@@ -122,7 +122,8 @@ body{ height:100%; height:100dvh; background:#f6f1eb; font-family: -apple-system
       <div class="input-row">
         <input id="chatInput" placeholder="아이폰 - 텍스트 붙여넣기..." onkeypress="if(event.key==='Enter')sendMsg()">
         <button class="icon-btn white" onclick="pasteFromClipboard()" title="붙여넣기">📋</button>
-        <button class="icon-btn white" title="사진/동영상/파일" onclick="document.getElementById('photoInput').click()">📷</button>
+        <button class="icon-btn white" title="사진/동영상" onclick="document.getElementById('photoInput').click()">📷</button>
+        <button class="icon-btn white" title="문서/PDF/파일" onclick="document.getElementById('fileInput').click()">📎</button>
         <button class="icon-btn" onclick="sendMsg()">전송</button>
       </div>
     </div>
@@ -149,13 +150,14 @@ body{ height:100%; height:100dvh; background:#f6f1eb; font-family: -apple-system
     </div>
     <div class="card">
       <h3>💡 사용법</h3>
-      <p>1. 양쪽 폰에서 같은 공유 ID 사용 (jeon-clipboard)<br>2. 한쪽에서 복사 → 붙여넣기 후 전송<br>3. 다른 폰에서 복사 버튼으로 가져오기<br>4. 사진·동영상·파일(PDF 등)도 전송 가능</p>
+      <p>1. 양쪽 폰에서 같은 공유 ID 사용 (jeon-clipboard)<br>2. 한쪽에서 복사 → 붙여넣기 후 전송<br>3. 다른 폰에서 복사 버튼으로 가져오기<br>4. 사진은 📷, 문서는 📎 버튼으로 전송 가능</p>
     </div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
 <div id="imgModal" onclick="closeImageViewer()"><button class="close" onclick="closeImageViewer()">×</button><img id="imgModalImg" src=""></div>
-<input type="file" id="photoInput" accept="*" style="display:none" onchange="handlePhotoSelect(event)">
+<input type="file" id="photoInput" accept="image/*,video/*" style="display:none" onchange="handlePhotoSelect(event)">
+<input type="file" id="fileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.hwp" style="display:none" onchange="handleFileSelect(event)">
 <script>
 const firebaseConfig = {apiKey: 'AIzaSyDKTiB6lqRDCHaM8vxWwbiX0K_nlb8_4jQ', authDomain: 'jeon-family-chat.firebaseapp.com', projectId: 'jeon-family-chat', storageBucket: 'jeon-family-chat.firebasestorage.app', messagingSenderId: '575056885546', appId: '1:575056885546:web:2fa1c64876773817906413', databaseURL: 'https://jeon-family-chat-default-rtdb.firebaseio.com'};
 firebase.initializeApp(firebaseConfig);
@@ -256,340 +258,4 @@ function renderChat(force){
   sorted.forEach(msg=>{
     const d=new Date(msg.created_at);
     const dateStr=d.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
-    if(dateStr!==lastDate){ html+='<div class="date-sep">'+dateStr+'</div>'; lastDate=dateStr; }
-    const isMine = msg.author===cur;
-    const mode = modes.find(m=>m.id===msg.author) || {icon:'👤'};
-    const timeStr = d.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
-    const safeKey = (msg._key||'').replace(/'/g,"\'");
-    const esc = escapeHtml(msg.content||'');
-    let bubbleInner='';
-    if(msg.type==='file' && msg.fileUrl){
-      const fName = escapeHtml(msg.origName||'파일');
-      const fSize = formatFileSize(msg.fileSize||0);
-      const fIcon = (msg.origName||'').toLowerCase().indexOf('.pdf')>=0 ? '📕' : '📎';
-      bubbleInner = '<div class="kakao-bubble" onclick="downloadFile(\''+safeKey+'\')" style="cursor:pointer;"><div style="display:flex;gap:8px;align-items:center;"><span style="font-size:22px;">'+fIcon+'</span><div style="min-width:0;"><div style="font-weight:800;font-size:12px;word-break:break-all;">'+fName+'</div><div style="font-size:10px;color:#666;">'+fSize+' · 탭해서 열기/저장</div></div></div></div>';
-    } else if(msg.type==='video' && msg.videoUrl){
-      const cap = msg.content?'<div style="padding:6px 8px; font-size:12px;">'+esc+'</div>':'';
-      bubbleInner = '<div class="kakao-bubble has-image"><video src="'+msg.videoUrl+'" controls playsinline preload="metadata" style="display:block;width:100%;max-height:260px;background:#000;border-radius:10px;"></video>'+cap+'</div>';
-    } else if(msg.type==='image' && msg.imageUrl){
-      const safeUrl = msg.imageUrl.replace(/'/g,"\'");
-      const cap = msg.content?'<div style="padding:6px 8px; font-size:12px;">'+esc+'</div>':'';
-      bubbleInner = '<div class="kakao-bubble has-image" onclick="openImageViewer(\''+safeUrl+'\')"><img src="'+msg.imageUrl+'" loading="lazy">'+cap+'</div>';
-    } else {
-      bubbleInner = '<div class="kakao-bubble">'+esc+'</div>';
-    }
-    const isImage = msg.type==='image' && msg.imageUrl;
-    const isVideo = msg.type==='video' && msg.videoUrl;
-    const isFile = msg.type==='file' && msg.fileUrl;
-    if(isMine){
-      let actions = '';
-      if(isFile){
-        actions = '<button class="kakao-copy" onclick="downloadFile(\''+safeKey+'\')">저장</button><button class="kakao-del" onclick="deleteMsg(\''+safeKey+'\')">삭제</button>';
-      } else if(isVideo){
-        actions = '<button class="kakao-copy" onclick="downloadVideo(\''+safeKey+'\')">저장</button><button class="kakao-del" onclick="deleteMsg(\''+safeKey+'\')">삭제</button>';
-      } else if(isImage){
-        actions = '<button class="kakao-copy" onclick="downloadImage(\''+safeKey+'\')">저장</button><button class="kakao-copy" style="background:#FFF9C4;color:#F57F17;" onclick="copyImageToClipboard(\''+safeKey+'\')">클립복사</button><button class="kakao-del" onclick="deleteMsg(\''+safeKey+'\')">삭제</button>';
-      } else {
-        actions = '<button class="kakao-copy" onclick="copyMsgContent(\''+safeKey+'\')">복사</button><button class="kakao-del" onclick="deleteMsg(\''+safeKey+'\')">삭제</button>';
-      }
-      html+='<div class="kakao-row mine"><div class="kakao-content"><div class="kakao-bubble-line"><div class="kakao-meta"><span class="kakao-time">'+timeStr+'</span><div class="kakao-actions">'+actions+'</div></div>'+bubbleInner+'</div></div></div>';
-    } else {
-      let actions = '';
-      if(isFile){
-        actions = '<button class="kakao-copy" onclick="downloadFile(\''+safeKey+'\')">저장</button>';
-      } else if(isVideo){
-        actions = '<button class="kakao-copy" onclick="downloadVideo(\''+safeKey+'\')">저장</button>';
-      } else if(isImage){
-        actions = '<button class="kakao-copy" onclick="downloadImage(\''+safeKey+'\')">저장</button><button class="kakao-copy" style="background:#FFF9C4;color:#F57F17;" onclick="copyImageToClipboard(\''+safeKey+'\')">클립복사</button>';
-      } else {
-        actions = '<button class="kakao-copy" onclick="copyMsgContent(\''+safeKey+'\')">복사</button>';
-      }
-      html+='<div class="kakao-row other"><div class="kakao-profile">'+mode.icon+'</div><div class="kakao-content"><div class="kakao-author">'+msg.author+'</div><div class="kakao-bubble-line">'+bubbleInner+'<div class="kakao-meta"><span class="kakao-time">'+timeStr+'</span><div class="kakao-actions">'+actions+'</div></div></div></div></div>';
-    }
-  });
-  el.innerHTML=html;
-  requestAnimationFrame(()=>{ el.scrollTop=el.scrollHeight; });
-  document.getElementById('liveStatus').textContent='🟢 실시간 연결됨 - 메시지 '+sorted.length+'개';
-}
-function copyMsgContent(key){
-  const msg = data.messages.find(m=>m._key===key);
-  if(!msg){ showToast('못찾음'); return; }
-  const txt = msg.content||'';
-  if(!txt){ showToast('복사할 텍스트 없음'); return; }
-  navigator.clipboard.writeText(txt).then(()=>showToast('복사됨')).catch(()=>{
-    const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); showToast('복사됨');
-  });
-}
-function deleteMsg(key){
-  if(!confirm('삭제할까?')) return;
-  db.ref('family/'+familyId+'/messages/'+key).remove();
-}
-function sendMsg(){
-  const inp=document.getElementById('chatInput');
-  const txt=inp.value.trim();
-  if(!txt) return;
-  const msg = {author:cur, content:txt, created_at:new Date().toISOString(), type:'text'};
-  db.ref('family/'+familyId+'/messages').push(msg);
-  inp.value='';
-}
-function handlePhotoSelect(e){
-  const file=e.target.files[0];
-  if(!file){ return; }
-  if(file.type && file.type.indexOf('video/')===0){
-    if(file.size>50*1024*1024){ showToast('동영상은 50MB 이하만'); e.target.value=''; return; }
-    showToast('동영상 업로드중...');
-    sendVideo(file);
-    e.target.value='';
-    return;
-  }
-  if(!(file.type && file.type.indexOf('image/')===0)){
-    if(file.size>50*1024*1024){ showToast('파일은 50MB 이하만'); e.target.value=''; return; }
-    showToast('파일 업로드중...');
-    sendFile(file);
-    e.target.value='';
-    return;
-  }
-  if(file.size>10*1024*1024){ showToast('10MB 이하만'); e.target.value=''; return; }
-  showToast('사진 압축중...');
-  compressAndSend(file);
-  e.target.value='';
-}
-function formatFileSize(n){
-  if(!n) return '';
-  if(n<1024) return n+'B';
-  if(n<1024*1024) return (n/1024).toFixed(1)+'KB';
-  return (n/1024/1024).toFixed(1)+'MB';
-}
-async function sendVideo(file){
-  try{
-    const safeName = (file.name||'video.mp4').replace(/[^a-zA-Z0-9._-]/g,'_');
-    const ref = storage.ref('family/'+familyId+'/videos/'+Date.now()+'_'+safeName);
-    await ref.put(file);
-    const url = await ref.getDownloadURL();
-    await db.ref('family/'+familyId+'/messages').push({author:cur, content:'', videoUrl:url, created_at:new Date().toISOString(), type:'video', isBase64:false, origName:file.name});
-    showToast('동영상 전송됨');
-  }catch(err){
-    console.error('video upload err', err);
-    showToast('동영상 전송 실패: '+err.message);
-  }
-}
-async function sendFile(file){
-  try{
-    const safeName = (file.name||'file').replace(/[^a-zA-Z0-9._-]/g,'_');
-    const ref = storage.ref('family/'+familyId+'/files/'+Date.now()+'_'+safeName);
-    await ref.put(file);
-    const url = await ref.getDownloadURL();
-    await db.ref('family/'+familyId+'/messages').push({author:cur, content:'', fileUrl:url, created_at:new Date().toISOString(), type:'file', isBase64:false, origName:file.name, fileSize:file.size, mimeType:file.type||''});
-    showToast('파일 전송됨');
-  }catch(err){
-    console.error('file upload err', err);
-    showToast('파일 전송 실패: '+err.message);
-  }
-}
-function compressAndSend(file){
-  const reader = new FileReader();
-  reader.onload = function(ev){
-    const img = new Image();
-    img.onload = function(){
-      const maxW = 1280;
-      let w = img.width, h = img.height;
-      if(w>maxW || h>maxW){
-        if(w>h){ h = Math.round(h*maxW/w); w = maxW; }
-        else { w = Math.round(w*maxW/h); h = maxW; }
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img,0,0,w,h);
-      let dataUrl;
-      try{ dataUrl = canvas.toDataURL('image/jpeg', 0.7); }
-      catch(err){ dataUrl = ev.target.result; }
-      let q=0.7;
-      while(dataUrl.length>1800000 && q>0.3){
-        q-=0.1;
-        dataUrl = canvas.toDataURL('image/jpeg', q);
-      }
-      db.ref('family/'+familyId+'/messages').push({
-        author:cur, content:'', imageUrl:dataUrl, created_at:new Date().toISOString(), type:'image', isBase64:true, origName:file.name
-      }).then(()=>{ showToast('사진 전송됨'); }).catch(err=>{
-        showToast('DB 저장 실패: '+err.message);
-      });
-    };
-    img.onerror = function(){
-      const dataUrl = ev.target.result;
-      db.ref('family/'+familyId+'/messages').push({author:cur, content:'', imageUrl:dataUrl, created_at:new Date().toISOString(), type:'image', isBase64:true})
-      .then(()=>showToast('사진 전송됨 (원본)'));
-    };
-    img.src = ev.target.result;
-  };
-  reader.onerror = ()=>{ showToast('파일 읽기 실패'); };
-  reader.readAsDataURL(file);
-}
-async function pasteFromClipboard(){
-  try{
-    const items = await navigator.clipboard.read();
-    for(const it of items){
-      for(const type of it.types){
-        if(type.startsWith('image/')){
-          const blob = await it.getType(type);
-          const file = new File([blob], 'clip-'+Date.now()+'.png', {type});
-          handlePhotoSelect({target:{files:[file], value:''}});
-          return;
-        }
-      }
-    }
-    const txt = await navigator.clipboard.readText();
-    if(txt){ document.getElementById('chatInput').value=txt; showToast('붙여넣기 됨'); }
-    else showToast('클립보드 비어있음');
-  }catch(e){
-    try{
-      const txt = await navigator.clipboard.readText();
-      if(txt){ document.getElementById('chatInput').value=txt; showToast('붙여넣기 됨'); return; }
-    }catch(e2){}
-    showToast('클립보드 권한 없음');
-  }
-}
-async function downloadImage(key){
-  const msg = data.messages.find(m=>m._key===key);
-  if(!msg || !msg.imageUrl){ showToast('이미지 없음'); return; }
-  try{
-    const res = await fetch(msg.imageUrl);
-    const blob = await res.blob();
-    const file = new File([blob], 'clipsync-'+Date.now()+'.jpg', {type: blob.type || 'image/jpeg'});
-    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file]});
-      showToast('공유하기로 저장하세요');
-      return;
-    }
-    if(/iPhone|iPad|iPod/.test(navigator.userAgent)){
-      openImageViewer(msg.imageUrl);
-      showToast('이미지를 길게 눌러 사진에 저장하세요');
-      return;
-    }
-    const url = URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;
-    a.download='clipsync-'+Date.now()+'.jpg';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url), 5000);
-    showToast('저장 시작됨');
-  }catch(e){
-    openImageViewer(msg.imageUrl);
-    showToast('이미지를 길게 눌러 사진에 저장하세요');
-  }
-}
-async function downloadVideo(key){
-  const msg = data.messages.find(m=>m._key===key);
-  if(!msg || !msg.videoUrl){ showToast('동영상 없음'); return; }
-  try{
-    const res = await fetch(msg.videoUrl);
-    const blob = await res.blob();
-    const file = new File([blob], msg.origName || ('clipsync-'+Date.now()+'.mp4'), {type: blob.type || 'video/mp4'});
-    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file]});
-      showToast('공유하기로 저장하세요');
-      return;
-    }
-    if(/iPhone|iPad|iPod/.test(navigator.userAgent)){
-      window.open(msg.videoUrl, '_blank');
-      showToast('열린 동영상에서 공유 > 파일에 저장하세요');
-      return;
-    }
-    const url = URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;
-    a.download=file.name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url), 5000);
-    showToast('저장 시작됨');
-  }catch(e){
-    window.open(msg.videoUrl, '_blank');
-  }
-}
-async function downloadFile(key){
-  const msg = data.messages.find(m=>m._key===key);
-  if(!msg || !msg.fileUrl){ showToast('파일 없음'); return; }
-  try{
-    const res = await fetch(msg.fileUrl);
-    const blob = await res.blob();
-    const file = new File([blob], msg.origName || ('clipsync-'+Date.now()), {type: msg.mimeType || blob.type || 'application/octet-stream'});
-    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file]});
-      showToast('공유하기로 저장하세요');
-      return;
-    }
-    if(/iPhone|iPad|iPod/.test(navigator.userAgent)){
-      window.open(msg.fileUrl, '_blank');
-      showToast('열린 파일에서 공유 > 파일에 저장하세요');
-      return;
-    }
-    const url = URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;
-    a.download=file.name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url), 5000);
-    showToast('저장 시작됨');
-  }catch(e){
-    window.open(msg.fileUrl, '_blank');
-  }
-}
-async function copyImageToClipboard(key){
-  const msg = data.messages.find(m=>m._key===key);
-  if(!msg || !msg.imageUrl){ showToast('이미지 없음'); return; }
-  try{
-    let blob;
-    if(msg.imageUrl.startsWith('data:')){
-      const res = await fetch(msg.imageUrl);
-      blob = await res.blob();
-    } else {
-      const res = await fetch(msg.imageUrl, {mode:'cors'});
-      blob = await res.blob();
-    }
-    if(navigator.clipboard && window.ClipboardItem){
-      const item = new ClipboardItem({[blob.type]: blob});
-      await navigator.clipboard.write([item]);
-      showToast('클립보드에 복사됨 - 붙여넣기 가능');
-    } else {
-      openImageViewer(msg.imageUrl);
-      showToast('길게 눌러서 이미지 복사');
-    }
-  }catch(err){
-    showToast('복사 실패, 길게 눌러 저장: '+err.message);
-    openImageViewer(msg.imageUrl);
-  }
-}
-function openImageViewer(url){
-  document.getElementById('imgModalImg').src=url;
-  document.getElementById('imgModal').style.display='flex';
-}
-function closeImageViewer(){ document.getElementById('imgModal').style.display='none'; }
-function init(){
-  updateTop();
-  chatRef = db.ref('family/'+familyId+'/messages');
-  readsRef = db.ref('family/'+familyId+'/reads');
-  chatRef.on('value', snap=>{
-    const val=snap.val()||{};
-    data.messages = Object.keys(val).map(k=>({...val[k], _key:k}));
-    renderChat(true);
-  });
-  readsRef.on('value', snap=>{
-    data.reads = snap.val()||{};
-  });
-  setInterval(()=>{
-    if(!cur) return;
-    const last = data.messages.slice().sort((a,b)=> new Date(b.created_at)-new Date(a.created_at))[0];
-    if(last){
-      db.ref('family/'+familyId+'/reads/'+cur).set({lastReadAt: new Date().toISOString(), lastReadId: last._key});
-    }
-  }, 3000);
-}
-window.onload=init;
-</script>
-</body></html>
+    if(dateStr!==lastDate){ html+='<div class
