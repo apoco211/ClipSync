@@ -47,7 +47,7 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ClipSync v1.9.2 - - - Kakao Fix</title>
+<title>ClipSync v1.9.4 - - - Kakao Fix</title>
 <link rel="apple-touch-icon" sizes="180x180" href="https://apoco211.github.io/ClipSync/clipsync-icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ClipSync">
@@ -160,7 +160,7 @@ body{ height:100%; height:100dvh; background:#f6f1eb; font-family: -apple-system
 <div class="app">
   <div class="top-header">
     <h1>📋 ClipSync</h1>
-    <span class="badge">v1.9.2 - Photo Download &amp; Clip</span>
+    <span class="badge">v1.9.4 - Photo Download &amp; Clip</span>
   </div>
   <div class="room-bar" id="topBadge">📱 아이폰 - jeon-clipboard</div>
   <div class="status-bar" id="liveStatus">🟢 실시간 연결됨 - 메시지 0개</div>
@@ -213,7 +213,7 @@ body{ height:100%; height:100dvh; background:#f6f1eb; font-family: -apple-system
 <div class="toast" id="toast"></div>
 <div id="imgModal" onclick="closeImageViewer()"><button class="close" onclick="closeImageViewer()">×</button><img id="imgModalImg" src=""></div>
 <input type="file" id="photoInput" accept="image/*,video/*" style="display:none" onchange="handlePhotoSelect(event)">
-<input type="file" id="fileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.hwp" style="display:none" onchange="handleFileSelect(event)">
+<input type="file" id="fileInput" accept="*.*" style="display:none" onchange="handleFileSelect(event)">
 
 <script>
 const firebaseConfig = {apiKey: 'AIzaSyDKTiB6lqRDCHaM8vxWwbiX0K_nlb8_4jQ', authDomain: 'jeon-family-chat.firebaseapp.com', projectId: 'jeon-family-chat', storageBucket: 'jeon-family-chat.firebasestorage.app', messagingSenderId: '575056885546', appId: '1:575056885546:web:2fa1c64876773817906413', databaseURL: 'https://jeon-family-chat-default-rtdb.firebaseio.com'};
@@ -451,32 +451,68 @@ function formatFileSize(n){
   return (n/1024/1024).toFixed(1)+'MB';
 }
 async function sendVideo(file){
+  showToast('동영상 업로드중... '+formatFileSize(file.size));
   try{
     const safeName = (file.name||'video.mp4').replace(/[^a-zA-Z0-9._-]/g,'_');
     const ref = storage.ref('family/'+familyId+'/videos/'+Date.now()+'_'+safeName);
-    await ref.put(file);
-    const url = await ref.getDownloadURL();
+    const task = ref.put(file);
+    const url = await new Promise(function(resolve, reject){
+      task.on('state_changed',
+        function(snap){ if(snap.totalBytes>0) showToast('동영상 업로드중... '+Math.round(snap.bytesTransferred/snap.totalBytes*100)+'%'); },
+        function(err){ reject(err); },
+        async function(){ try{ resolve(await task.snapshot.ref.getDownloadURL()); }catch(e){ reject(e); } }
+      );
+      setTimeout(function(){ try{ task.cancel(); }catch(e){} reject(new Error('업로드 시간초과 60초')); }, 60000);
+    });
     await db.ref('family/'+familyId+'/messages').push({author:cur, content:'', videoUrl:url, created_at:new Date().toISOString(), type:'video', isBase64:false, origName:file.name});
     showToast('동영상 전송됨');
   }catch(err){
     console.error('video upload err', err);
-    showToast('동영상 전송 실패: '+err.message);
+    const code = (err && err.code) || '';
+    if(code.indexOf('permission')>=0 || code.indexOf('unauthorized')>=0 || code.indexOf('unauthenticated')>=0){
+      showToast('Storage 규칙이 막음 - 콘솔에서 Storage 규칙 확인');
+    } else {
+      showToast('동영상 전송 실패: '+(err && err.message));
+    }
   }
 }
 async function sendFile(file){
+  showToast('파일 준비중... '+(file.name||'')+' ('+formatFileSize(file.size)+')');
+  if(file.size < 5*1024*1024){
+    try{
+      const dataUrl = await new Promise(function(resolve, reject){
+        const reader = new FileReader();
+        reader.onprogress = function(e){ if(e.lengthComputable) showToast('파일 읽는중... '+Math.round(e.loaded/e.total*100)+'%'); };
+        reader.onload = function(ev){ resolve(ev.target.result); };
+        reader.onerror = function(){ reject(new Error('파일 읽기 실패')); };
+        reader.readAsDataURL(file);
+      });
+      showToast('DB로 업로드중... '+(file.name||''));
+      await db.ref('family/'+familyId+'/messages').push({author:cur, content:'', fileUrl:dataUrl, created_at:new Date().toISOString(), type:'file', isBase64:true, origName:file.name, fileSize:file.size, mimeType:file.type||''});
+      showToast('파일 전송됨 (DB)');
+      return;
+    }catch(err){
+      showToast('DB 저장 실패, Storage로 다시 시도: '+err.message);
+    }
+  }
   try{
     const safeName = (file.name||'file').replace(/[^a-zA-Z0-9._-]/g,'_');
     const ref = storage.ref('family/'+familyId+'/files/'+Date.now()+'_'+safeName);
-    await ref.put(file);
-    const url = await ref.getDownloadURL();
+    const task = ref.put(file);
+    const url = await new Promise(function(resolve, reject){
+      task.on('state_changed',
+        function(snap){ if(snap.totalBytes>0) showToast('Storage 업로드중... '+Math.round(snap.bytesTransferred/snap.totalBytes*100)+'%'); },
+        function(err){ reject(err); },
+        async function(){ try{ resolve(await task.snapshot.ref.getDownloadURL()); }catch(e){ reject(e); } }
+      );
+      setTimeout(function(){ try{ task.cancel(); }catch(e){} reject(new Error('업로드 시간초과 60초')); }, 60000);
+    });
     await db.ref('family/'+familyId+'/messages').push({author:cur, content:'', fileUrl:url, created_at:new Date().toISOString(), type:'file', isBase64:false, origName:file.name, fileSize:file.size, mimeType:file.type||''});
-    showToast('파일 전송됨');
+    showToast('파일 전송됨 (Storage)');
   }catch(err){
-    console.error('file upload err', err);
-    showToast('파일 전송 실패: '+err.message);
+    showToast('파일 전송 실패: '+(err && err.message)+' / 코드: '+((err && err.code)||'없음'));
   }
 }
-
 function compressAndSend(file){
   const reader = new FileReader();
   reader.onload = function(ev){
@@ -615,6 +651,9 @@ async function downloadVideo(key){
 async function downloadFile(key){
   const msg = data.messages.find(m=>m._key===key);
   if(!msg || !msg.fileUrl){ showToast('파일 없음'); return; }
+  if(msg.fileUrl.indexOf('data:')===0){
+    const a=document.createElement('a'); a.href=msg.fileUrl; a.download=msg.origName||'file'; document.body.appendChild(a); a.click(); a.remove(); showToast('저장 시작됨'); return;
+  }
   try{
     const res = await fetch(msg.fileUrl);
     const blob = await res.blob();
